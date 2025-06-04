@@ -694,7 +694,9 @@ Function GetM365DNSRecords
     Param
     (
         [Parameter(Mandatory = $true)]
-        $domainName
+        $domainName,
+        [Parameter(Mandatory = $true)]
+        $outputFile
     )
 
     out-logfile -string "Enter GetM365DNSRecords"
@@ -710,6 +712,8 @@ Function GetM365DNSRecords
         out-logfile -string $_
         out-logfile -string "Unable to obtain M365 DNS Verification Records." -isError:$TRUE
     }
+
+    WriteXMLFile -data $functionDNSRecords -outputFile $outputFile
 
     return $functionDNSRecords
 }
@@ -790,7 +794,9 @@ Function GetPublicDNS
         [Parameter(Mandatory = $true)]
         $domainName,
         [Parameter(Mandatory = $true)]
-        $dnsType
+        $dnsType,
+        [Parameter(Mandatory = $true)]
+        $outputFile
     )
 
     out-logfile -string "Enter GetPublicDNS"
@@ -816,6 +822,8 @@ Function GetPublicDNS
             out-logfile -string $text
         }
     }
+
+    WriteXMLFile -data $functionDNSRecords -outputFile $outputFile
 
     return $functionDNSRecords
 }
@@ -876,9 +884,8 @@ $global:GraphConnection = $FALSE
 
 out-logfile -string ("Output JSON Results: "+$outputresultsJson)
 out-logfile -string ("Output M365 DNS Records: "+$outputM365DNSRecords)
-out-logfile -string ("Output Public DNS Records: "+$outputPublicDNSRecordsTXT)
 out-logfile -string ("Output Public DNS Records TXT: "+$outputPublicDNSRecordsTXT)
-out-logfile -string ("Output Public DNS Records MX: "+$outputPublicDNSRecordsTXT)
+out-logfile -string ("Output Public DNS Records MX: "+$outputPublicDNSRecordsMX)
 out-logfile -string ("Output MGContext: "+$outputMGContext)
 out-logfile -string ("Output DomainName: "+$outputDomainName)
 
@@ -914,18 +921,12 @@ TestDomainName -domainName $domainName -outputFile $outputDomainName
 
 out-logfile -string "Obtaining all relevant DNS records."
 
-$m365DNSRecords = GetM365DNSRecords -domainName $domainName
+$m365DNSRecords = GetM365DNSRecords -domainName $domainName -outputFile $outputM365DNSRecords
 
-WriteXMLFile -data $m365DNSRecords -outputFile $outputM365DNSRecords
+$publicTXTRecords = GetPubliCDNS -dnstype $dnsTypeText -domainName $domainName -outputFile $outputPublicDNSRecordsTXT
 
-$publicTXTRecords = GetPubliCDNS -dnstype $dnsTypeText -domainName $domainName
-
-WriteXMLFile -data $publicDNSRecordsTXT -outputFile $outputPublicDNSRecordsTXT
-
-$publicMXRecords = GetPublicDNS -dnstype $dnsTypeMX -domainName $domainName
-
-WriteXMLFile -data $publicDNSRecordsMX -outputFile $outputPublicDNSRecordsMX
+$publicMXRecords = GetPublicDNS -dnstype $dnsTypeMX -domainName $domainName -outputFile $outputPublicDNSRecordsMX
 
 out-logfile -string "Testing to verify that public DNS is updated with verification records."
 
-TestDNSRecords -mx $publicDNSRecordsMX -txt $publicDNSRecordsTXT -domainName $domainName -m365DNS $m365DNSRecords
+TestDNSRecords -mx $publicMXRecords -txt $publicTXTRecords -domainName $domainName -m365DNS $m365DNSRecords
