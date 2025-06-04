@@ -714,6 +714,36 @@ Function GetM365DNSRecords
     return $functionDNSRecords
 }
 
+#*****************************************************
+Function GetPublicDNS
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $domainName,
+        [Parameter(Mandatory = $true)]
+        $dnsType
+    )
+
+    out-logfile -string "Enter GetPublicDNS"
+
+    $functionDNSRecords
+
+    try
+    {
+        $functionDNSRecords = Resolve-DNSName -name $domainName -type $dnsType -errorAction STOP
+    }
+    catch
+    {
+        out-logfile -string $_
+        out-logfile -string "Unable to obtain public DNS records." -isError:$TRUE
+    }
+
+    return $functionDNSRecords
+}
+
 
 #=====================================================================================
 #Begin main function body.
@@ -742,6 +772,11 @@ Function GetM365DNSRecords
 [string]$outputDomainName = ""
 
 $m365DNSRecords = $NULL
+$publicTXTRecords = $NULL
+$publicMXRecords = $NULL
+
+$dnsTypeText = "TXT"
+$dnsTypeMX = "MX"
 
 #Create the log file.
 
@@ -770,7 +805,6 @@ out-logfile -string ("Output Public DNS Records TXT: "+$outputPublicDNSRecordsTX
 out-logfile -string ("Output Public DNS Records MX: "+$outputPublicDNSRecordsTXT)
 out-logfile -string ("Output MGContext: "+$outputMGContext)
 out-logfile -string ("Output DomainName: "+$outputDomainName)
-
 
 #Establish graph connection.
 
@@ -804,3 +838,10 @@ $m365DNSRecords = GetM365DNSRecords -domainName $domainName
 
 WriteXMLFile -data $m365DNSRecords -outputFile $outputM365DNSRecords
 
+$publicDNSRecordsTXT = GetPubliCDNS -dnstype $dnsTypeText -domainName $domainName
+
+WriteXMLFile -data $publicDNSRecordsTXT -outputFile $outputPublicDNSRecordsTXT
+
+$publicDNSRecordsMX = GetPublicDNS -dnstype $dnsTypeMX -domainName $domainName
+
+WriteXMLFile -data $publicDNSRecordsMX -outputFile $outputPublicDNSRecordsMX
