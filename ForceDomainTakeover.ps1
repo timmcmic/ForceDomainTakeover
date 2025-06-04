@@ -1,7 +1,7 @@
 
 <#PSScriptInfo
 
-.VERSION 1.0.1
+.VERSION 1.0.2
 
 .GUID 4d12d780-d14c-4a38-9c29-5e707d7d07b7
 
@@ -45,19 +45,21 @@ RequiredModules = @(
 Param(
     #Define General Paramters
     [Parameter(Mandatory=$true)]
-    [string]$logFolderPath=,
+    [string]$logFolderPath,
     [Parameter(Mandatory=$false)]
     [string]$domainName="",
     #Define Microsoft Graph Parameters
     [Parameter(Mandatory = $false)]
     [ValidateSet("","China","Global","USGov","USGovDod")]
-    [string]$msGraphEnvironmentName="Global",
+    [string]$msGraphEnvironmentName="",
     [Parameter(Mandatory=$false)]
     [string]$msGraphTenantID="",
     [Parameter(Mandatory=$false)]
     [string]$msGraphCertificateThumbprint="",
     [Parameter(Mandatory=$false)]
-    [string]$msGraphApplicationID=""
+    [string]$msGraphApplicationID="",
+    [Parameter(Mandatory=$false)]
+    [string]$msGraphClientSecret=""
 )
 
 
@@ -161,10 +163,556 @@ Function Out-LogFile
         #If the call is from a function in a do while - write-error rethrows the exception.  The exception is caught by the caller where a retry occurs.
         #This is how we end up logging an error then looping back around.
 
+        if ($global:GraphConnection -eq $TRUE)
+        {
+            Disconnect-MGGraph
+        }
+
         write-error $logString
+
+        exit
     }
 }
 
+#*****************************************************
+Function WriteXMLFile
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $outputFile,
+        [Parameter(Mandatory = $true)]
+        $data
+    )
+
+    out-logfile -string "Entering WriteXMLFile"
+
+    try
+    {
+        out-logfile -string "Writing outout to xml file."
+
+        $data | export-cliXML -path $outputFile -errorAction STOP
+    }
+    catch
+    {
+        out-logfile -string $_
+        out-logfile -string "Unable to write data to XML file." -isError:$TRUE
+    }
+}
+
+#*****************************************************
+Function CheckGraphEnvironment
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $msGraphEnvironmentName
+    )
+
+    $global = "Global"
+    $usGov = "USGov"
+    $usDOD = "USDoD"
+    $china = "China"
+
+    out-logfile -string "Entering CheckGraphEnvironment"
+
+    if ($msGraphEnvironmentName -eq "")
+    {
+        out-logfile -string "A graph envirnoment was not supplied."
+
+        write-host "Select the grpah environment for your tenant:"
+        write-host "1:  Global"
+        write-host "2:  USGov"
+        write-host "3:  USDoD"
+        write-host "4:  China"
+
+        $selection = read-host "Please make a environment selection: "
+
+        out-logfile -string ("Graph environment selected = "+$selection)
+
+        switch($selection)
+        {
+            '1' {
+                $msGraphEnvironmentName = $global
+            } '2' {
+                $msGraphEnvironmentName = $usGov
+            } '3' {
+                $msGraphEnvironmentName = $usDOD
+            } '4' {
+                $msGraphEnvironmentName = $china
+            } default {
+                out-logfile -string "Invalid environment selection made." -isError:$TRUE
+            }
+        }
+
+        out-logfile -string ("MSGraphEnvironmentName: "+$msGraphEnvironmentName)
+    }
+    else
+    {
+        out-logfile -string "Returning the supplied msgraph environment."
+    }
+
+    return $msGraphEnvironmentName
+}
+
+#*****************************************************
+Function CheckGraphTenantID
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $msGraphTenantID
+    )
+
+    out-logfile -string "Entering CheckGraphTenantID"
+
+    if ($msGraphTenantID -eq "")
+    {
+        $msGraphTenantID = read-host "Provied an Entra / Graph TenantID: "
+
+        out-logfile -string ("MSGraphTenantID: "+$msGraphTenantID)
+    }
+    else
+    {
+        out-logfile -string "Returning the supplied msgraph tenant id."
+    }
+
+    return $msGraphTenantID
+}
+
+#*****************************************************
+Function CheckGraphURL
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $msGraphEnvironmentName
+    )
+
+    $global = "Global"
+    $usGov = "USGov"
+    $usDOD = "USDoD"
+    $china = "China"
+    $msGraphURL = ""
+    $msGraphURLGlobal = "https://graph.microsoft.com"
+    $msGraphURLUSGov = "https://graph.microsoft.us"
+    $msGraphURLUSDoD = "https://dod-graph.microsoft.us"
+    $msGraphURLChina = "https://microsoftgraph.chinacloudapi.cn"
+
+    out-logfile -string "Entering CheckGraphURL"
+
+    if ($msGraphEnvironmentName -eq $global)
+    {
+        $msGraphURL = $msGraphURLGlobal
+    }
+    elseif ($msGraphEnvironmentName -eq $usGov)
+    {
+        $msGraphURL = $msGraphURLUSGov
+    }
+    elseif ($msGraphEnvironmentName -eq $usDOD)
+    {
+        $msGraphURL = $msGraphURLUSDoD
+    }
+    elseif ($msGraphEnvironmentName -eq $China)
+    {
+        $msGraphURL = $msGraphURLChina
+    }
+
+    out-logfile -string ("MSGraphURL: "+$msGraphURL)
+
+    return $msGraphURL
+}
+
+#*****************************************************
+Function CheckGraphURL
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $msGraphEnvironmentName
+    )
+
+    out-logfile -string "Entering CheckGraphUrl"
+
+    $global = "Global"
+    $usGov = "USGov"
+    $usDOD = "USDoD"
+    $china = "China"
+    $msGraphURL = ""
+    $msGraphURLGlobal = "https://graph.microsoft.com"
+    $msGraphURLUSGov = "https://graph.microsoft.us"
+    $msGraphURLUSDoD = "https://dod-graph.microsoft.us"
+    $msGraphURLChina = "https://microsoftgraph.chinacloudapi.cn"
+
+    out-logfile -string "Entering CheckGraphURL"
+
+    if ($msGraphEnvironmentName -eq $global)
+    {
+        $msGraphURL = $msGraphURLGlobal
+    }
+    elseif ($msGraphEnvironmentName -eq $usGov)
+    {
+        $msGraphURL = $msGraphURLUSGov
+    }
+    elseif ($msGraphEnvironmentName -eq $usDOD)
+    {
+        $msGraphURL = $msGraphURLUSDoD
+    }
+    elseif ($msGraphEnvironmentName -eq $China)
+    {
+        $msGraphURL = $msGraphURLChina
+    }
+
+    out-logfile -string ("MSGraphURL: "+$msGraphURL)
+
+    return $msGraphURL
+}
+
+#*****************************************************
+Function CheckMSGraph
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $msGraphApplicationID,
+        [Parameter(Mandatory = $true)]
+        $msGraphCertificateThumbprint,
+        [Parameter(Mandatory = $true)]
+        $msGraphClientSecret
+    )
+
+    $applicationAuthType = ""
+    $appIdProvied = $false
+    $certificateProvided = $false
+    $clientSecreteProvied = $false
+    $interactiveAuth = "InteractiveAuth"
+    $certificateAuth = "CertificateAuth"
+    $clientSecretAuth = "ClientSecret"
+
+    out-logfile -string "Entering CheckMSGraph"
+
+    out-logfile -string "Determine if an MSGraphApplicationID was specified..."
+
+    if ($msGraphApplicationID -ne "")
+    {
+        out-logfile -string "MSGraphApplicationID Provided."
+
+        $appIdProvied = $TRUE
+    }
+    else
+    {
+        out-logfile -string "MSGraphApplicationID Not Provided"
+    }
+
+    out-logfile -string "Determine if MSGraphCertificateThumbprint was specified..."
+
+    if ($msGraphCertificateThumbprint -ne "")
+    {
+        out-logfile -string "MSGraphCertificateThumbprint Provided"
+        $certificateProvided = $TRUE
+    }
+    else
+    {
+        out-logfile -string "MSGraphCertificateThumbprint Not Provided"
+        
+    }
+
+    out-logfile -string "Determine if MSGraphClientSecret was specified..."
+
+    if ($msGraphClientSecret -ne "")
+    {
+        out-logfile -string "MSGraphClientSecret Provided"
+        $clientSecreteProvied = $TRUE
+    }
+    else
+    {
+        out-logfile -string "MSGraphClientSecret Not Provided"
+    }
+
+    out-logfile -string "Determine the authentication method."
+
+    if ($appIdProvied -eq $FALSE -and (($certificateProvided -eq $TRUE) -or ($clientSecreteProvied -eq $TRUE)))
+    {
+        out-logfile -string "A msGraphApplicationID is required anytime msGraphCertificateThumbprint or msGraphClientSecret are specified." -isError:$TRUE
+    }
+    else
+    {
+        out-logfile -string "Not missing msGraphApplicationID."
+    }
+
+    if ($appIDProvied -eq $TRUE -and (($certificateProvided -eq $FALSE) -and ($clientSecreteProvied -eq $FALSE)))
+    {
+        out-logfile -string "An msGraphCertificateThumbPrint or msGraphClientSecret is required anytime msGraphApplicationID is specified." -isError:$TRUE
+    }
+    else
+    {
+        out-logfile -string "Not missing msGraphCertificateThumbprint or msGraphClientSecret with msGraphApplicationID."
+    }
+
+    if ($appIDProvied -eq $TRUE -and (($certificateProvided -eq $TRUE) -and ($clientSecreteProvied -eq $TRUE)))
+    {
+        out-logfile -string "Specify either an msGraphCertificateThumbPrint or msGraphClientSecret only when msGraphApplicationID is specified." -isError:$TRUE
+    }
+    else
+    {
+        out-logfile -string "Not specifying both msGraphCertificateThumbprint and msGraphClientSecret with msGraphApplicationID."
+    }
+
+    if (($appIdProvied -eq $TRUE) -and ($certificateProvided -eq $TRUE))
+    {
+        out-logfile -string "Certificate authentication type utilized."
+        $applicationAuthType = $certificateAuth
+    }
+    elseif (($appIDProvied -eq $TRUE) -and ($clientSecreteProvied -eq $TRUE))
+    {
+        out-logfile -string "Client Secret authentication type utilized."
+        $applicationAuthType = $clientSecretAuth
+    }
+    else
+    {
+        out-logfile -string "Interactive authentication type specified."
+        $applicationAuthType = $interactiveAuth
+    }
+
+    out-logfile -string ("MSGraphAuthType: "+$applicationAuthType)
+
+    return $applicationAuthType
+}
+
+#*****************************************************
+Function ConnectMSGraph
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $msGraphAuthType,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        $msGraphApplicationID,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        $msGraphCertificateThumbPrint,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        $msGraphClientSecret,
+        [Parameter(Mandatory = $true)]
+        $msGraphEnvironmentName,
+        [Parameter(Mandatory = $true)]
+        $msGraphTenantID,
+        [Parameter(Mandatory = $true)]
+        $msGraphStaticScope
+    )
+
+    $interactiveAuth = "InteractiveAuth"
+    $certificateAuth = "CertificateAuth"
+    $clientSecretAuth = "ClientSecret"
+
+    out-logfile -string "Entering ConnectMSGraph"
+
+    if ($msGraphAuthType -eq $interactiveAuth)
+    {
+        out-logfile -string "Connect to msgraph using interactive authentication."
+
+        try
+        {
+            connect-MGGraph -environment $msGraphEnvironmentName -tenant $msGraphTenantID -scopes $msGraphStaticScope -errorAction STOP
+
+            out-logfile -string "Graph connection successful."
+        }
+        catch
+        {
+            out-logfile -string $_
+            out-logfile -string "Error connecting to Microsoft Graph."
+        }
+    }
+    elseif ($msGraphAuthType -eq $certificateAuth)
+    {
+        out-logfile -string "Connect to msgraph using certificate authentication."
+
+        try
+        {
+            connect-MGGraph -environment $msGraphEnvironmentName -tenant $msGraphTenantID -clientID $msGraphApplicationID -certificateThumbprint $msGraphCertificateThumbprint -errorAction STOP
+
+            out-logfile -string "Graph connection successful."
+        }
+        catch
+        {
+            out-logfile -string $_
+            out-logfile -string "Error connecting to Microsoft Graph."
+        }
+    }
+    elseif ($msGraphAuthType -eq $clientSecretAuth)
+    {
+        out-logfile -string "Connect to msgraph using certificate authentication."
+
+        try
+        {
+            connect-MGGraph -environment $msGraphEnvironmentName -tenant $msGraphTenantID -clientID $msGraphApplicationID -clientSecretCredential $msGraphClientSecret -errorAction STOP
+
+            out-logfile -string "Graph connection successful."
+        }
+        catch
+        {
+            out-logfile -string $_
+            out-logfile -string "Error connecting to Microsoft Graph."
+        }
+    }
+
+    $global:GraphConnection = $TRUE
+}
+
+#*****************************************************
+Function WriteMGContext
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $outputFile
+    )
+
+    out-logfile -string "Enter WriteMGContext"
+
+    $mgContext = $NULL
+
+    try
+    {
+        $mgContext = get-MGContext -errorAction STOP
+    }
+    catch
+    {
+        out-logfile -string $_
+        out-logfile -string "Unable to run get-MGContext." -isError:$TRUE
+    }
+
+    WriteXMLFile -outputFile $outputFile -data $mgContext
+}
+
+#*****************************************************
+Function CheckDomainName
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $domainName
+    )
+
+    out-logfile -string "Enter CheckDomainName"
+
+    if ($domainName -eq "")
+    {
+        out-logfile -string "Domain name not specified - obtaining."
+
+        $domainName = read-host "Please enter a domain name to takeover"
+
+        out-logfile -string ("Domain name to process: "+$domainName)
+    }
+    else
+    {
+        out-logfile -string "Domain name specified."
+        out-logfile -string ("Domain name to process: "+$domainName)
+    }
+
+    return $domainName
+}
+
+#*****************************************************
+Function TestDomainName
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $domainName,
+        [Parameter(Mandatory = $true)]
+        $outputFile
+    )
+
+    out-logfile -string "Enter TestDomainName"
+
+    $functionDomain = $NULL
+    $selection = $NULL
+
+    try
+    {
+        $functionDomain = get-MGDomain -domainID $domainName -errorAction STOP
+    }
+    catch
+    {
+        out-logfile -string $_
+        out-logfile -string ("Specified Domain "+$domainName+" is not added to the specified tenant.")
+        
+        $selection = Read-Host "Add domain to tenant to proceed? Y/N"
+
+        switch ($selection)
+        {
+            'Y' {
+                try
+                {
+                    out-logfile -string "Attempting to add the domain."
+                    $functionDomain = new-MGDomain -id $domainName -errorAction STOP    
+                }
+                catch
+                {
+                    out-logfile -string $_
+                    out-logfile -string "Unable to add the domain as a part of the force takover process - exit." -isError:$TRUE
+                }
+            } 'N' {
+                out-logfile -string "Please add the domain manually with new-MGDomain prior to proceeding with force takeover." -isError:$TRUE
+            } default {
+                out-logfile -string "Invalid environment selection made." -isError:$TRUE
+            }
+        }
+    }
+
+    WriteXMLFile -outputFile $outputFile -data $functionDomain
+}
+
+#*****************************************************
+Function GetM365DNSRecords
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $domainName
+    )
+
+    out-logfile -string "Enter GetM365DNSRecords"
+
+    $functionDNSRecords
+
+    try
+    {
+        $functionDNSRecords = Get-MgDomainVerificationDnsRecord -DomainID $domainName -errorAction STOP
+    }
+    catch
+    {
+        out-logfile -string $_
+        out-logfile -string "Unable to obtain M365 DNS Verification Records." -isError:$TRUE
+    }
+
+    return $functionDNSRecords
+}
 
 
 #=====================================================================================
@@ -173,8 +721,29 @@ Function Out-LogFile
 
 #Declare variables
 
-$logFileName = "ForceDomainTakeover"
-$outputFileName = $NULL
+[string]$logFileName = "ForceDomainTakeover"
+[string]$logFileNameFull = $logFileName +".log"
+[string]$resultsJson = "Results.json"
+[string]$m365DNSRecordsInfo = "M365DNSRecords.xml"
+[string]$publicDNSRecordsTXT = "PublicDNSRecordsTXT.xml"
+[string]$publicDNSRecordsMX = "PublicDNSRecordsMX.xml"
+[string]$mgContext = "MGContext.xml"
+[string]$domainNameInfo = "DomainName.xml"
+
+[string]$msGraphStaticScope = "Domain.ReadWrite.All"
+[string]$msGraphURL = ""
+[string]$msGraphAuthType = ""
+
+[string]$outputResultsJson = ""
+[string]$outputM365DNSRecords = ""
+[string]$outputPublicDNSRecordsTXT = ""
+[string]$outputPublicDNSRecordsMX = ""
+[string]$outputMGContext = ""
+[string]$outputDomainName = ""
+
+$m365DNSRecords = $NULL
+
+#Create the log file.
 
 new-logfile -logFileName $logFileName -logFolderPath $logFolderPath
 
@@ -182,7 +751,56 @@ out-logfile -string "***********************************************************
 out-logfile -string "Starting ForceDomainTakeOver"
 out-logfile -string "***********************************************************"
 
-$outputFileName = $global:LogFile.replace(".log",".json")
-out-logfile -string ("Defining output file: "+$outputFileName)
+#Calculate output file names.
 
+out-logfile -string "Calculating output file names..."
+$outputresultsJson = $global:LogFile.replace($logFileNameFull,$resultsJson)
+$outputM365DNSRecords = $global:LogFile.replace($logFileNameFull,$m365DNSRecordsInfo)
+$outputPublicDNSRecordsTXT = $global:LogFile.replace($logFileNameFull,$publicDNSRecordsTXT)
+$outputPublicDNSRecordsMX = $global:LogFile.replace($logFileNameFull,$publicDNSRecordsMX)
+$outputMGContext = $global:LogFile.replace($logFileNameFull,$mgContext)
+$outputDomainName = $global:LogFile.replace($logFileNameFull,$domainNameInfo)
+
+$global:GraphConnection = $FALSE
+
+out-logfile -string ("Output JSON Results: "+$outputresultsJson)
+out-logfile -string ("Output M365 DNS Records: "+$outputM365DNSRecords)
+out-logfile -string ("Output Public DNS Records: "+$outputPublicDNSRecordsTXT)
+out-logfile -string ("Output Public DNS Records TXT: "+$outputPublicDNSRecordsTXT)
+out-logfile -string ("Output Public DNS Records MX: "+$outputPublicDNSRecordsTXT)
+out-logfile -string ("Output MGContext: "+$outputMGContext)
+out-logfile -string ("Output DomainName: "+$outputDomainName)
+
+
+#Establish graph connection.
+
+$msGraphEnvironmentName = CheckGraphEnvironment -msGraphEnvironmentName $msGraphEnvironmentName
+
+out-logfile -string ("MSGraphEnvironmentName: "+$msGraphEnvironmentName)
+
+$msGraphTenantID = CheckGraphTenantID -msGraphTenantID $msGraphTenantID
+
+out-logfile -string ("MSGraphTenantID: "+$msGraphTenantID)
+
+$msGraphURL = CheckGraphURL -msGraphEnvironmentName $msGraphEnvironmentName
+
+out-logfile -string ("MSGraphURL: "+$msGraphURL)
+
+$msGraphAuthType = CheckMSGraph -msGraphApplicationID $msGraphApplicationID -msGraphCertificateThumbprint $msGraphCertificateThumbprint -msGraphClientSecret $msGraphClientSecret
+
+out-logfile -string ("MSGraphAuthType: "+$msGraphAuthType)
+
+ConnectMSGraph -msGraphAuthType $msGraphAuthType -msGraphApplicationID $msGraphApplicationID -msGraphCertificateThumbprint $msGraphCertificateThumbprint -msGraphStaticScope $msGraphStaticScope -msGraphClientSecret $msGraphClientSecret -msGraphEnvironmentName $msGraphEnvironmentName -msGraphTenantID $msGraphTenantID
+
+WriteMGContext -outputFile $outputMGContext
+
+$domainName = CheckDomainName -domainName $domainName
+
+out-logfile -string ("Domain name to process: "+$domainName)
+
+TestDomainName -domainName $domainName -outputFile $outputDomainName
+
+$m365DNSRecords = GetM365DNSRecords -domainName $domainName
+
+WriteXMLFile -data $m365DNSRecords -outputFile $outputM365DNSRecords
 
