@@ -715,6 +715,72 @@ Function GetM365DNSRecords
 }
 
 #*****************************************************
+Function TestDNSRecords
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $domainName,
+        [Parameter(Mandatory = $true)]
+        $txt,
+        [Parameter(Mandatory = $true)]
+        $mx,
+        [Parameter(Mandatory = $true)]
+        $m365DNS
+    )
+
+    $functionM365TXT = ""
+    $functionM365MX = ""
+    $functionTXT = "TXT"
+    $functionMX = "MX"
+    $functionTXTPresent = $FALSE
+    $functionMXPresent = $false
+    $functionverificationPresent = $FALSE
+
+    out-logfile -string "Enter TestDNSRecords"
+
+    out-logfile -string "Determine the M365 verification records."
+
+    foreach ($entry in $m365DNS)
+    {
+        if ($entry.RecordType -eq $functionTXT)
+        {
+            out-logfile -string ("ID Number: "+$entry.id+ "Record Type: "+$entry.RecordType)
+
+            out-logfile "TXT Record Type"
+            
+            $functionTXT = $entry.additionalProperties.text
+
+            out-logfile -string ("Text Verification Code: "+$functionTXT)
+        }
+        elseif ($entry.RecordType -eq $functionMX)
+        {
+            out-logfile -string ("ID Number: "+$entry.id+ "Record Type: "+$entry.RecordType)
+
+            out-logfile -string "MX Record Type"
+
+            $functionMX = $entry.additionalProperties.mailExchange
+
+            out-logfile -string ("MX Verification Code: "+$functionMX)
+        }
+    }
+
+    out-logfile -string "Testing Public DNS Text records for text verification code."
+
+    if ($txt.strings.contains($functionTXT))
+    {
+        out-logfile -string "The text verification record is present."
+        $functionTXTPresent = $TRUE
+    }
+    else
+    {
+        out-logfile -string "The text verficiation record is not present."
+    }
+}
+
+#*****************************************************
 Function GetPublicDNS
 {
     [cmdletbinding()]
@@ -739,6 +805,16 @@ Function GetPublicDNS
     {
         out-logfile -string $_
         out-logfile -string "Unable to obtain public DNS records." -isError:$TRUE
+    }
+
+    foreach ($record in $functionDNSRecords)
+    {
+        out-logfile -string $record.name
+        
+        foreach ($text in $record.strings)
+        {
+            out-logfile -string $text
+        }
     }
 
     return $functionDNSRecords
@@ -808,6 +884,8 @@ out-logfile -string ("Output DomainName: "+$outputDomainName)
 
 #Establish graph connection.
 
+out-logfile -string "Perfomring graph pre-checks and connections."
+
 $msGraphEnvironmentName = CheckGraphEnvironment -msGraphEnvironmentName $msGraphEnvironmentName
 
 out-logfile -string ("MSGraphEnvironmentName: "+$msGraphEnvironmentName)
@@ -834,14 +912,20 @@ out-logfile -string ("Domain name to process: "+$domainName)
 
 TestDomainName -domainName $domainName -outputFile $outputDomainName
 
+out-logfile -string "Obtaining all relevant DNS records."
+
 $m365DNSRecords = GetM365DNSRecords -domainName $domainName
 
 WriteXMLFile -data $m365DNSRecords -outputFile $outputM365DNSRecords
 
-$publicDNSRecordsTXT = GetPubliCDNS -dnstype $dnsTypeText -domainName $domainName
+$publicTXTRecords = GetPubliCDNS -dnstype $dnsTypeText -domainName $domainName
 
 WriteXMLFile -data $publicDNSRecordsTXT -outputFile $outputPublicDNSRecordsTXT
 
-$publicDNSRecordsMX = GetPublicDNS -dnstype $dnsTypeMX -domainName $domainName
+$publicMXRecords = GetPublicDNS -dnstype $dnsTypeMX -domainName $domainName
 
 WriteXMLFile -data $publicDNSRecordsMX -outputFile $outputPublicDNSRecordsMX
+
+out-logfile -string "Testing to verify that public DNS is updated with verification records."
+
+TestDNSRecords -mx $publicDNSRecordsMX -txt $publicDNSRecordsTXT -domainName $domainName -m365DNS $m365DNSRecords
