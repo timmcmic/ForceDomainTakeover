@@ -219,6 +219,8 @@ Function WriteJsonFile
 
     out-logfile -string "Entering WriteJsonFile"
 
+    $functionData = $data | ConvertTo-Json
+
     try
     {
         out-logfile -string "Writing outout to json file."
@@ -921,13 +923,18 @@ Function TakeOverDomain
 
     $body = $body | ConvertTo-Json
 
-    $response = Invoke-MGGraphRequest -Method $graphMethod -uri $msGraphURI -Body $body
+    out-logfile -string $body
 
-    $response = $response | ConvertTo-Json
-
-    WriteJsonFile -data $response -outputFile $outputFile
-
-    out-logfile -string "Here"
+    try {
+        out-logfile -string "Attempting to validate domain."
+        Invoke-MGGraphRequest -Method $graphMethod -uri $msGraphURI -Body $body -errorAction Stop
+        out-logfile -string 'SUCCESS'
+    }
+    catch {
+        $_ | ConvertTo-Json | set-content $outputFile
+        out-logfile -string $_
+        out-logfile -string "ERROR OCCURED VALIDATING DOMAIN"
+    }
 }
 
 
@@ -1056,3 +1063,9 @@ $msGraphFunctionURI = GetMSGraphCall -msGraphUseBeta $msGraphUseBeta -msGraphEnv
 out-logfile -string "Attempt domain takeover."
 
 TakeOverDomain -msGraphURI $msGraphFunctionURI -outputFile $outputResultsJSON
+
+Disconnect-MgGraph
+
+out-logfile -string "Done"
+
+exit
