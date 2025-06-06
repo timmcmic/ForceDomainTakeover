@@ -59,7 +59,9 @@ Param(
     [Parameter(Mandatory=$false)]
     [string]$msGraphApplicationID="",
     [Parameter(Mandatory=$false)]
-    [string]$msGraphClientSecret=""
+    [string]$msGraphClientSecret="",
+    [Parameter(Mandatory=$false)]
+    [string]$msGraphUseBeta=$false
 )
 
 
@@ -203,6 +205,34 @@ Function WriteXMLFile
 }
 
 #*****************************************************
+Function WriteJsonFile
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $outputFile,
+        [Parameter(Mandatory = $true)]
+        $data
+    )
+
+    out-logfile -string "Entering WriteJsonFile"
+
+    try
+    {
+        out-logfile -string "Writing outout to json file."
+
+        $functionData | out-file -FilePath $outputFile -errorAction STOP
+    }
+    catch
+    {
+        out-logfile -string $_
+        out-logfile -string "Unable to write data to JSON file." -isError:$TRUE
+    }
+}
+
+#*****************************************************
 Function CheckGraphEnvironment
 {
     [cmdletbinding()]
@@ -212,11 +242,6 @@ Function CheckGraphEnvironment
         [Parameter(Mandatory = $true)]
         $msGraphEnvironmentName
     )
-
-    $global = "Global"
-    $usGov = "USGov"
-    $usDOD = "USDoD"
-    $china = "China"
 
     out-logfile -string "Entering CheckGraphEnvironment"
 
@@ -237,13 +262,13 @@ Function CheckGraphEnvironment
         switch($selection)
         {
             '1' {
-                $msGraphEnvironmentName = $global
+                $msGraphEnvironmentName = $global:global
             } '2' {
-                $msGraphEnvironmentName = $usGov
+                $msGraphEnvironmentName = $global:usGov
             } '3' {
-                $msGraphEnvironmentName = $usDOD
+                $msGraphEnvironmentName = $global:usDOD
             } '4' {
-                $msGraphEnvironmentName = $china
+                $msGraphEnvironmentName = $global:China
             } default {
                 out-logfile -string "Invalid environment selection made." -isError:$TRUE
             }
@@ -297,80 +322,25 @@ Function CheckGraphURL
         $msGraphEnvironmentName
     )
 
-    $global = "Global"
-    $usGov = "USGov"
-    $usDOD = "USDoD"
-    $china = "China"
     $msGraphURL = ""
-    $msGraphURLGlobal = "https://graph.microsoft.com"
-    $msGraphURLUSGov = "https://graph.microsoft.us"
-    $msGraphURLUSDoD = "https://dod-graph.microsoft.us"
-    $msGraphURLChina = "https://microsoftgraph.chinacloudapi.cn"
 
     out-logfile -string "Entering CheckGraphURL"
 
-    if ($msGraphEnvironmentName -eq $global)
+    if ($msGraphEnvironmentName -eq $global:global)
     {
-        $msGraphURL = $msGraphURLGlobal
+        $msGraphURL = $global:msGraphURLGlobal
     }
-    elseif ($msGraphEnvironmentName -eq $usGov)
+    elseif ($msGraphEnvironmentName -eq $global:usGov)
     {
-        $msGraphURL = $msGraphURLUSGov
+        $msGraphURL = $global:msGraphURLUSGov
     }
-    elseif ($msGraphEnvironmentName -eq $usDOD)
+    elseif ($msGraphEnvironmentName -eq $global:usDOD)
     {
-        $msGraphURL = $msGraphURLUSDoD
+        $msGraphURL = $global:msGraphURLUSDoD
     }
-    elseif ($msGraphEnvironmentName -eq $China)
+    elseif ($msGraphEnvironmentName -eq $global:China)
     {
-        $msGraphURL = $msGraphURLChina
-    }
-
-    out-logfile -string ("MSGraphURL: "+$msGraphURL)
-
-    return $msGraphURL
-}
-
-#*****************************************************
-Function CheckGraphURL
-{
-    [cmdletbinding()]
-
-    Param
-    (
-        [Parameter(Mandatory = $true)]
-        $msGraphEnvironmentName
-    )
-
-    out-logfile -string "Entering CheckGraphUrl"
-
-    $global = "Global"
-    $usGov = "USGov"
-    $usDOD = "USDoD"
-    $china = "China"
-    $msGraphURL = ""
-    $msGraphURLGlobal = "https://graph.microsoft.com"
-    $msGraphURLUSGov = "https://graph.microsoft.us"
-    $msGraphURLUSDoD = "https://dod-graph.microsoft.us"
-    $msGraphURLChina = "https://microsoftgraph.chinacloudapi.cn"
-
-    out-logfile -string "Entering CheckGraphURL"
-
-    if ($msGraphEnvironmentName -eq $global)
-    {
-        $msGraphURL = $msGraphURLGlobal
-    }
-    elseif ($msGraphEnvironmentName -eq $usGov)
-    {
-        $msGraphURL = $msGraphURLUSGov
-    }
-    elseif ($msGraphEnvironmentName -eq $usDOD)
-    {
-        $msGraphURL = $msGraphURLUSDoD
-    }
-    elseif ($msGraphEnvironmentName -eq $China)
-    {
-        $msGraphURL = $msGraphURLChina
+        $msGraphURL = $global:msGraphURLChina
     }
 
     out-logfile -string ("MSGraphURL: "+$msGraphURL)
@@ -737,8 +707,6 @@ Function TestDNSRecords
 
     $functionM365TXT = ""
     $functionM365MX = ""
-    $functionTXT = "TXT"
-    $functionMX = "MX"
     $functionTXTPresent = $FALSE
     $functionMXPresent = $false
     $functionverificationPresent = $FALSE
@@ -773,14 +741,48 @@ Function TestDNSRecords
 
     out-logfile -string "Testing Public DNS Text records for text verification code."
 
-    if ($txt.strings.contains($functionTXT))
+    if ($txt.Type -ne $functionSOA)
     {
-        out-logfile -string "The text verification record is present."
-        $functionTXTPresent = $TRUE
+        if ($txt.strings.contains($functionTXT))
+         {
+            out-logfile -string "The text verification record is present."
+            $functionTXTPresent = $TRUE
+        }
+        else
+        {
+            out-logfile -string "The text verficiation record is not present."
+        }
     }
-    else
+    else 
     {
-        out-logfile -string "The text verficiation record is not present."
+        out-logfile -string "SOA record found = assume no txt present at all."
+    }
+
+    if ($mx.Type -ne $functionSOA)
+    {
+         if ($mx.NameExchange.contains($functionMX))
+        {
+            out-logfile -string "The mx verification record is present."
+            $functionMXPresent = $true
+        }
+        else 
+        {
+            out-logfile -string "The mx verification record is not present."
+        }
+    }
+    else 
+    {
+        out-logfile -string "SOA record found = assume no mx present at all."
+    }
+
+   
+    if (($functionMXPresent -eq $TRUE) -or ($functionTXTPresent -eq $TRUE))
+    {
+        out-logfile -string "A minimum of one verification method was located for the domain - proceed."
+    }
+    else 
+    {
+        out-logfile -string "Either a TXT or MX verification record must be located in public DNS prior to proceeding - please fix - error." -isError:$true
     }
 }
 
@@ -801,37 +803,149 @@ Function GetPublicDNS
 
     out-logfile -string "Enter GetPublicDNS"
 
-    $functionDNSRecords
+    [array]$functionDNSRecords=@()
 
     try
     {
-        $functionDNSRecords = Resolve-DNSName -name $domainName -type $dnsType -errorAction STOP
+        $functionDNSRecords += Resolve-DNSName -name $domainName -type $dnsType -errorAction STOP
     }
     catch
     {
         out-logfile -string $_
         out-logfile -string "Unable to obtain public DNS records." -isError:$TRUE
-    }
-
-    foreach ($record in $functionDNSRecords)
-    {
-        out-logfile -string $record.name
-        
-        foreach ($text in $record.strings)
-        {
-            out-logfile -string $text
-        }
-    }
+    } 
 
     WriteXMLFile -data $functionDNSRecords -outputFile $outputFile
 
     return $functionDNSRecords
 }
 
+#*****************************************************
+Function GetMSGraphCall
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $domainName,
+        [Parameter(Mandatory = $true)]
+        $msGraphUseBeta,
+        [Parameter(Mandatory = $true)]
+        $msGraphEnvironmentName
+    )
+
+    $functionDomainString = "/v1.0/domains/$domainName/verify"
+    $functionDomainStringBeta = "/beta/domains/$domainName/verify"
+
+    out-logfile -string "Enter GetMSGraphCall"
+
+    out-logfile -string $functionDomainString
+    out-logfile -string $functionDomainStringBeta
+
+    out-logfile -string "Determining the correct graph api endpoint."
+
+    if (($msGraphEnvironmentName -eq $global:global) -and ($msGraphUseBeta -eq $FALSE))
+    {
+        out-logfile -string "Global / Not Beta"
+
+        $functionURI = $global:msGraphURLGlobal+$functionDomainString
+    }
+    elseif (($msGraphEnvironmentName -eq $global:usGov) -and ($msGraphUseBeta -eq $FALSE))
+    {
+        out-logfile -string "Global / Not Beta"
+
+        $functionURI = $global:msGraphURLUSGov+$functionDomainString
+    }
+    elseif (($msGraphEnvironmentName -eq $global:usDOD) -and ($msGraphUseBeta -eq $FALSE))
+    {
+        out-logfile -string "Global / Not Beta"
+
+        $functionURI = $global:msGraphURLUSDoD+$functionDomainString
+    }
+    elseif (($msGraphEnvironmentName -eq $global:China) -and ($msGraphUseBeta -eq $FALSE))
+    {
+        out-logfile -string "Global / Not Beta"
+
+        $functionURI = $global:msGraphURLChina+$functionDomainString
+    }
+    elseif (($msGraphEnvironmentName -eq $global:global) -and ($msGraphUseBeta -eq $TRUE))
+    {
+        out-logfile -string "Global / Beta"
+
+        $functionURI = $global:msGraphURLGlobal+$functionDomainStringBeta
+    }
+    elseif (($msGraphEnvironmentName -eq $global:usGov) -and ($msGraphUseBeta -eq $TRUE))
+    {
+        out-logfile -string "Global / Beta"
+
+        $functionURI = $global:msGraphURLUSGov+$functionDomainStringBeta
+    }
+    elseif (($msGraphEnvironmentName -eq $global:usDOD) -and ($msGraphUseBeta -eq $TRUE))
+    {
+        out-logfile -string "Global / Beta"
+
+        $functionURI = $global:msGraphURLUSDoD+$functionDomainStringBeta
+    }
+    elseif (($msGraphEnvironmentName -eq $global:China) -and ($msGraphUseBeta -eq $TRUE))
+    {
+        out-logfile -string "Global / Beta"
+
+        $functionURI = $global:msGraphURLChina+$functionDomainStringBeta
+    }
+
+    out-logfile -string $functionURI
+
+    return $functionURI
+}
+
+#*****************************************************
+Function TakeOverDomain
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $msGraphURI,
+        [Parameter(Mandatory = $true)]
+        $outputFile
+    )
+
+    $graphMethod = "Post"
+    $body = @{}
+
+    out-logfile -string "Enter TakeOverDomain"
+
+    $body = @{ forceTakeover = $true }
+
+    $body = $body | ConvertTo-Json
+
+    $response = Invoke-MGGraphRequest -Method $graphMethod -uri $msGraphURI -Body $body
+
+    $response = $response | ConvertTo-Json
+
+    WriteJsonFile -data $response -outputFile $outputFile
+
+    out-logfile -string "Here"
+}
+
+
 
 #=====================================================================================
 #Begin main function body.
 #=====================================================================================
+
+#Declare global variables.
+
+$global:global = "Global"
+$global:usGov = "USGov"
+$global:usDOD = "USDoD"
+$global:China = "China"
+$global:msGraphURLGlobal = "https://graph.microsoft.com"
+$global:msGraphURLUSGov = "https://graph.microsoft.us"
+$global:msGraphURLUSDoD = "https://dod-graph.microsoft.us"
+$global:msGraphURLChina = "https://microsoftgraph.chinacloudapi.cn"
 
 #Declare variables
 
@@ -862,6 +976,9 @@ $publicMXRecords = $NULL
 $dnsTypeText = "TXT"
 $dnsTypeMX = "MX"
 
+$msGraphFunctionURI = ""
+$takeOverDomainResults = $null
+
 #Create the log file.
 
 new-logfile -logFileName $logFileName -logFolderPath $logFolderPath
@@ -879,8 +996,9 @@ $outputPublicDNSRecordsTXT = $global:LogFile.replace($logFileNameFull,$publicDNS
 $outputPublicDNSRecordsMX = $global:LogFile.replace($logFileNameFull,$publicDNSRecordsMX)
 $outputMGContext = $global:LogFile.replace($logFileNameFull,$mgContext)
 $outputDomainName = $global:LogFile.replace($logFileNameFull,$domainNameInfo)
+$outputResultsJSON = $global:LogFile.replace($logFileNameFull,$resultsJson)
 
-$global:GraphConnection = $FALSE
+$global:global:GraphConnection = $FALSE
 
 out-logfile -string ("Output JSON Results: "+$outputresultsJson)
 out-logfile -string ("Output M365 DNS Records: "+$outputM365DNSRecords)
@@ -930,3 +1048,11 @@ $publicMXRecords = GetPublicDNS -dnstype $dnsTypeMX -domainName $domainName -out
 out-logfile -string "Testing to verify that public DNS is updated with verification records."
 
 TestDNSRecords -mx $publicMXRecords -txt $publicTXTRecords -domainName $domainName -m365DNS $m365DNSRecords
+
+out-logfile -string "Obtain MS Graph URI"
+
+$msGraphFunctionURI = GetMSGraphCall -msGraphUseBeta $msGraphUseBeta -msGraphEnvironmentName $msGraphEnvironmentName -domainName $domainName
+
+out-logfile -string "Attempt domain takeover."
+
+TakeOverDomain -msGraphURI $msGraphFunctionURI -outputFile $outputResultsJSON
