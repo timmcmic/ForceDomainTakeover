@@ -641,6 +641,7 @@ Function TestDomainName
                 {
                     out-logfile -string "Attempting to add the domain."
                     $functionDomain = new-MGDomain -id $domainName -errorAction STOP    
+                    $functionDomainAdded = $true
                 }
                 catch
                 {
@@ -760,16 +761,30 @@ Function TestDNSRecords
 
     out-logfile -string "Testing public DNS records."
 
-    if ($txt.value.contains($functionM365TXT))
+    foreach ($entry in $txt)
     {
-        out-logfile -string "Text verification record found."
-        $functionTXTPresent = $TRUE
+        if ($entry.value -eq $functionM365Txt)
+        {
+            out-logfile -string "TXT record found in public dns."
+            $functionTXTPresent = $TRUE
+        }
+        else 
+        {
+            out-logfile -string "TXT record not found in public dns."
+        }
     }
 
-    if ($mx.value.contains($functionM365MX))
+    foreach ($entry in $mx)
     {
-        out-logfile -string "MX verification record found."
-        $functionMXPresent = $TRUE
+        if ($entry.value -eq $functionM365MX)
+        {
+            out-logfile -string "MX record found in public dns."
+            $functionMXPresent = $TRUE
+        }
+        else 
+        {
+            out-logfile -string "MX record not found in public dns."
+        }
     }
 
     if (($functionMXPresent -eq $TRUE) -or ($functionTXTPresent -eq $TRUE))
@@ -778,7 +793,8 @@ Function TestDNSRecords
     }
     else 
     {
-        out-logfile -string "Either a TXT or MX verification record must be located in public DNS prior to proceeding - please fix - error." -isError:$true
+       
+        out-logfile -string ("`n `n Either TXT Record [Most Common]: "+$functionM365TXT + " or MX Record: "+$functionM365MX+" must be present in public dns.  `n If the domain was recently added please add either of this records to proceed. `n `n") -isError:$TRUE
     }
 }
 
