@@ -674,6 +674,8 @@ Function GetM365DNSRecords
     out-logfile -string "Enter GetM365DNSRecords"
 
     $functionDNSRecords
+    $functionObject
+    [array]$functionDNSRecordsReturn=@()
 
     try
     {
@@ -687,7 +689,31 @@ Function GetM365DNSRecords
 
     WriteXMLFile -data $functionDNSRecords -outputFile $outputFile
 
-    return $functionDNSRecords
+    out-logfile -string "Creating custom objects of DNS entries for return."
+
+    foreach ($entry in $functionDNSRecords)
+    {
+        if ($entry.recordType -eq $global:dnsTypeText)
+        {
+            $functionObject = New-Object PSObject -Property @{
+                RecordType = $entry.recordType
+                Value = $entry.AdditionalProperties.text
+            }
+        }
+        elseif ($entry.recordType -eq $global:dnsTypeMX)
+        {
+           $functionObject = New-Object PSObject -Property @{
+                RecordType = $entry.recordType
+                Value = $entry.AdditionalProperties.mailExchange
+            }
+        }
+
+        $functionDNSRecordsReturn += $functionObject
+    }
+
+    out-logfile -string $functionDNSRecordsReturn
+
+    return $functionDNSRecordsReturn
 }
 
 #*****************************************************
@@ -715,69 +741,37 @@ Function TestDNSRecords
 
     out-logfile -string "Enter TestDNSRecords"
 
-    out-logfile -string "Determine the M365 verification records."
-
     foreach ($entry in $m365DNS)
     {
-        if ($entry.RecordType -eq $functionTXT)
+        if ($entry.RecordType -eq $global:dnsTypeText)
         {
-            out-logfile -string ("ID Number: "+$entry.id+ "Record Type: "+$entry.RecordType)
-
-            out-logfile "TXT Record Type"
-            
-            $functionTXT = $entry.additionalProperties.text
-
-            out-logfile -string ("Text Verification Code: "+$functionTXT)
+            out-logfile -string $entry.Value
+            $functionM365Txt = $entry.value
         }
-        elseif ($entry.RecordType -eq $functionMX)
+        elseif ($entry.recordType -eq $global:dnsTypeMX)
         {
-            out-logfile -string ("ID Number: "+$entry.id+ "Record Type: "+$entry.RecordType)
-
-            out-logfile -string "MX Record Type"
-
-            $functionMX = $entry.additionalProperties.mailExchange
-
-            out-logfile -string ("MX Verification Code: "+$functionMX)
+            out-logfile -string $entry.Value
+            $functionM365MX = $entry.Value
         }
     }
 
-    out-logfile -string "Testing Public DNS Text records for text verification code."
+    out-logfile -string ("M365 TXT Record: "+$functionM365Txt)
+    out-logfile -string ("M365 MX Record: "+$functionM365mx)
 
-    if ($txt.Type -ne $functionSOA)
+    out-logfile -string "Testing public DNS records."
+
+    if ($txt.value.contains($functionM365TXT))
     {
-        if ($txt.strings.contains($functionTXT))
-         {
-            out-logfile -string "The text verification record is present."
-            $functionTXTPresent = $TRUE
-        }
-        else
-        {
-            out-logfile -string "The text verficiation record is not present."
-        }
-    }
-    else 
-    {
-        out-logfile -string "SOA record found = assume no txt present at all."
+        out-logfile -string "Text verification record found."
+        $functionTXTPresent = $TRUE
     }
 
-    if ($mx.Type -ne $functionSOA)
+    if ($mx.value.contains($functionM365MX))
     {
-         if ($mx.NameExchange.contains($functionMX))
-        {
-            out-logfile -string "The mx verification record is present."
-            $functionMXPresent = $true
-        }
-        else 
-        {
-            out-logfile -string "The mx verification record is not present."
-        }
-    }
-    else 
-    {
-        out-logfile -string "SOA record found = assume no mx present at all."
+        out-logfile -string "MX verification record found."
+        $functionMXPresent = $TRUE
     }
 
-   
     if (($functionMXPresent -eq $TRUE) -or ($functionTXTPresent -eq $TRUE))
     {
         out-logfile -string "A minimum of one verification method was located for the domain - proceed."
@@ -806,6 +800,7 @@ Function GetPublicDNS
     out-logfile -string "Enter GetPublicDNS"
 
     [array]$functionDNSRecords=@()
+    [array]$functionDNSRecordsReturn =@()
 
     try
     {
@@ -819,7 +814,45 @@ Function GetPublicDNS
 
     WriteXMLFile -data $functionDNSRecords -outputFile $outputFile
 
-    return $functionDNSRecords
+    foreach ($entry in $functionDNSRecords)
+    {
+        if ($entry.type -eq $global:dnsTypeSOA)
+        {
+            out-logfile -string "Entry is type SOA."
+
+            $functionObject = New-Object PSObject -Property @{
+                RecordType = $global:dnsTypeSOA
+                Value = "NotApplicable"
+            }
+        }
+        elseif ($entry.type -eq $global:dnsTypeText)
+        {
+            out-logfile -string "Entry type is TXT."
+
+            foreach ($value in $entry.strings)
+            {
+                $functionObject = New-Object PSObject -Property @{
+                RecordType = $global:dnsTypeText
+                Value = $value
+                }
+            }
+        }
+        elseif ($entry.type -eq $global:dnsTypeMX)
+        {
+            out-logfile -string "Entry type is TXT."
+            
+            $functionObject = New-Object PSObject -Property @{
+                RecordType = $global:dnsTypeMX
+                Value = $entry.NameExchange  
+            }
+        }
+
+        $functionDNSRecordsReturn += $functionObject
+    }
+
+    out-logfile -string $functionDNSRecordsReturn
+
+    return $functionDNSRecordsReturn
 }
 
 #*****************************************************
@@ -980,8 +1013,9 @@ $m365DNSRecords = $NULL
 $publicTXTRecords = $NULL
 $publicMXRecords = $NULL
 
-$dnsTypeText = "TXT"
-$dnsTypeMX = "MX"
+$global:dnsTypeText = "TXT"
+$global:dnsTypeMX = "MX"
+$global:dnsTypeSOA = "SOA"
 
 $msGraphFunctionURI = ""
 $takeOverDomainResults = $null
@@ -1048,9 +1082,9 @@ out-logfile -string "Obtaining all relevant DNS records."
 
 $m365DNSRecords = GetM365DNSRecords -domainName $domainName -outputFile $outputM365DNSRecords
 
-$publicTXTRecords = GetPubliCDNS -dnstype $dnsTypeText -domainName $domainName -outputFile $outputPublicDNSRecordsTXT
+$publicTXTRecords = GetPubliCDNS -dnstype $global:dnsTypeText -domainName $domainName -outputFile $outputPublicDNSRecordsTXT
 
-$publicMXRecords = GetPublicDNS -dnstype $dnsTypeMX -domainName $domainName -outputFile $outputPublicDNSRecordsMX
+$publicMXRecords = GetPublicDNS -dnstype $global:dnsTypeMX -domainName $domainName -outputFile $outputPublicDNSRecordsMX
 
 out-logfile -string "Testing to verify that public DNS is updated with verification records."
 
