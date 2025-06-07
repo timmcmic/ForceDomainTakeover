@@ -1,7 +1,7 @@
 
 <#PSScriptInfo
 
-.VERSION 1.0.4
+.VERSION 1.0.5
 
 .GUID 4d12d780-d14c-4a38-9c29-5e707d7d07b7
 
@@ -986,7 +986,41 @@ Function TakeOverDomain
     }
 }
 
+#*****************************************************
+Function IsDomainViral
+{
+    [cmdletbinding()]
 
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $domainName,
+        [Parameter(Mandatory = $true)]
+        $outputFile
+    )
+
+    out-logfile -string "Enter IsDomainViral"
+
+    $functionURL = "https://login.microsoftonline.com/common/userrealm/"+$domainName+"?api-version=2.1"
+    $functionResults = $NULL
+
+    out-logfile -string ("Testing: "+$functionURL)
+
+    $functionResults = Invoke-WebRequest $functionURL
+
+    if ($functionResults.content.contains("IsViral"))
+    {
+        out-logfile -string "Domain is reporting viral - force takover potentially will succeed."
+    }
+    else 
+    {
+        out-logfile "Domain is not reporting viral - unlikely to succeed."
+    }
+
+    $functionResults.content | out-file -FilePath $outputFile
+    
+    exit
+}
 
 #=====================================================================================
 #Begin main function body.
@@ -1013,6 +1047,7 @@ $global:msGraphURLChina = "https://microsoftgraph.chinacloudapi.cn"
 [string]$publicDNSRecordsMX = "PublicDNSRecordsMX.xml"
 [string]$mgContext = "MGContext.xml"
 [string]$domainNameInfo = "DomainName.xml"
+[string]$viralDomainInfo = "ViralInfo.txt"
 
 [string]$msGraphStaticScope = "Domain.ReadWrite.All"
 [string]$msGraphURL = ""
@@ -1054,6 +1089,7 @@ $outputPublicDNSRecordsMX = $global:LogFile.replace($logFileNameFull,$publicDNSR
 $outputMGContext = $global:LogFile.replace($logFileNameFull,$mgContext)
 $outputDomainName = $global:LogFile.replace($logFileNameFull,$domainNameInfo)
 $outputResultsJSON = $global:LogFile.replace($logFileNameFull,$resultsJson)
+$outputViralInfo = $outputResultsJSON = $global:LogFile.replace($logFileNameFull,$viralDomainInfo)
 
 $global:global:GraphConnection = $FALSE
 
@@ -1089,6 +1125,8 @@ ConnectMSGraph -msGraphAuthType $msGraphAuthType -msGraphApplicationID $msGraphA
 WriteMGContext -outputFile $outputMGContext
 
 $domainName = CheckDomainName -domainName $domainName
+
+IsDomainViral -domainName $domainName -outputFile $outputViralInfo
 
 out-logfile -string ("Domain name to process: "+$domainName)
 
