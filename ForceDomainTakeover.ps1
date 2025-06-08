@@ -911,8 +911,10 @@ Function GetMSGraphCall
         $msGraphEnvironmentName
     )
 
-    $functionDomainString = "/v1.0/domains/$domainName/verify"
-    $functionDomainStringBeta = "/beta/domains/$domainName/verify"
+    $functionmsGraphPublicVersion = "v1.0"
+    $functionmsGraphBetaVersion = "Beta"
+    $functionDomainString = "/$functionmsGraphPublicVersion/domains/$domainName/verify"
+    $functionDomainStringBeta = "/$functionmsGraphBetaVersion/domains/$domainName/verify"
 
     out-logfile -string "Enter GetMSGraphCall"
 
