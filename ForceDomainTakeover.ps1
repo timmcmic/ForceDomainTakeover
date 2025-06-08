@@ -48,6 +48,8 @@ Param(
     [string]$logFolderPath,
     [Parameter(Mandatory=$false)]
     [string]$domainName="",
+    [Parameter(Mandatory=$false)]
+    [string]$customDNSServer="",
     #Define Microsoft Graph Parameters
     [Parameter(Mandatory = $false)]
     [ValidateSet("","China","Global","USGov","USGovDod")]
@@ -810,7 +812,9 @@ Function GetPublicDNS
         [Parameter(Mandatory = $true)]
         $dnsType,
         [Parameter(Mandatory = $true)]
-        $outputFile
+        $outputFile,
+        [Parameter(Mandatory = $true)]
+        $customDNSServer
     )
 
     out-logfile -string "Enter GetPublicDNS"
@@ -818,15 +822,36 @@ Function GetPublicDNS
     [array]$functionDNSRecords=@()
     [array]$functionDNSRecordsReturn =@()
 
-    try
+    if ($customDNSServer -eq "")
     {
-        $functionDNSRecords += Resolve-DNSName -name $domainName -type $dnsType -errorAction STOP
+        out-logfile -string "Using DNS resolvers set on local interface."
+
+        try
+        {
+            $functionDNSRecords += Resolve-DNSName -name $domainName -type $dnsType -errorAction STOP
+        }
+        catch
+        {
+            out-logfile -string $_
+            out-logfile -string "Unable to obtain public DNS records." -isError:$TRUE
+        } 
     }
-    catch
+    else
     {
-        out-logfile -string $_
-        out-logfile -string "Unable to obtain public DNS records." -isError:$TRUE
-    } 
+        out-logfile -string "Using custom dns resolver."
+
+        try
+        {
+            $functionDNSRecords += Resolve-DNSName -name $domainName -type $dnsType -server $customDNSServer -errorAction STOP
+        }
+        catch
+        {
+            out-logfile -string $_
+            out-logfile -string "Unable to obtain public DNS records." -isError:$TRUE
+        } 
+    }
+
+    
 
     WriteXMLFile -data $functionDNSRecords -outputFile $outputFile
 
@@ -1134,9 +1159,9 @@ out-logfile -string "Obtaining all relevant DNS records."
 
 $m365DNSRecords = GetM365DNSRecords -domainName $domainName -outputFile $outputM365DNSRecords
 
-$publicTXTRecords = GetPubliCDNS -dnstype $global:dnsTypeText -domainName $domainName -outputFile $outputPublicDNSRecordsTXT
+$publicTXTRecords = GetPubliCDNS -dnstype $global:dnsTypeText -domainName $domainName -outputFile $outputPublicDNSRecordsTXT -customDNSServer $customDNSServer
 
-$publicMXRecords = GetPublicDNS -dnstype $global:dnsTypeMX -domainName $domainName -outputFile $outputPublicDNSRecordsMX
+$publicMXRecords = GetPublicDNS -dnstype $global:dnsTypeMX -domainName $domainName -outputFile $outputPublicDNSRecordsMX -customDNSServer $customDNSServer
 
 out-logfile -string "Testing to verify that public DNS is updated with verification records."
 
