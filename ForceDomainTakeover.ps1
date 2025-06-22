@@ -1,4 +1,3 @@
-
 <#PSScriptInfo
 
 .VERSION 1.0.6
@@ -9,43 +8,39 @@
 
 .COMPANYNAME Microsoft
 
-.COPYRIGHT
+.COPYRIGHT 
 
-.TAGS
+.TAGS 
 
-.LICENSEURI
+.LICENSEURI 
 
-.PROJECTURI
+.PROJECTURI 
 
-.ICONURI
+.ICONURI 
 
 .EXTERNALMODULEDEPENDENCIES 
 
-.REQUIREDSCRIPTS
+.REQUIREDSCRIPTS # Modules that must be imported into the global environment prior to importing this module
+RequiredModules = 'ActiveDirectory' 'ADDelegation'
 
-# Modules that must be imported into the global environment prior to importing this module
-RequiredModules = @(
-    @{ModuleName = 'Microsoft.Graph.Authentication' ; ModuleVersion = '2.28.0'}
-
-.EXTERNALSCRIPTDEPENDENCIES
+.EXTERNALSCRIPTDEPENDENCIES 
 
 .RELEASENOTES
-
-# Modules that must be imported into the global environment prior to importing this module
-RequiredModules = @(
-    @{ModuleName = 'Microsoft.Graph.Authentication' ; ModuleVersion = '2.28.0'}
-)
+#Requires -modules  @{ModuleName = 'Microsoft.Graph.Authentication' ; ModuleVersion = '2.28.0'}
 
 .PRIVATEDATA
 
+
 #>
 
-<# 
+#Requires -Module @{ ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.28.0' }
 
-.DESCRIPTION 
+<#
+
+.DESCRIPTION
  This script automates the process for external takeover / force takeover. 
 
-#> 
+#>
 Param(
     #Define General Paramters
     [Parameter(Mandatory=$true)]
