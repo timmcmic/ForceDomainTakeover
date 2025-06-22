@@ -23,6 +23,10 @@
 
 .REQUIREDSCRIPTS
 
+# Modules that must be imported into the global environment prior to importing this module
+RequiredModules = @(
+    @{ModuleName = 'Microsoft.Graph.Authentication' ; ModuleVersion = '2.28.0'}
+
 .EXTERNALSCRIPTDEPENDENCIES
 
 .RELEASENOTES
