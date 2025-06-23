@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.7
+.VERSION 1.0.8
 
 .GUID 4d12d780-d14c-4a38-9c29-5e707d7d07b7
 
@@ -20,20 +20,19 @@
 
 .EXTERNALMODULEDEPENDENCIES 
 
-.REQUIREDSCRIPTS # Modules that must be imported into the global environment prior to importing this module
-RequiredModules = 'ActiveDirectory' 'ADDelegation'
+.REQUIREDSCRIPTS
 
 .EXTERNALSCRIPTDEPENDENCIES 
 
 .RELEASENOTES
-#Requires -modules  @{ModuleName = 'Microsoft.Graph.Authentication' ; ModuleVersion = '2.28.0'}
 
 .PRIVATEDATA
 
 
 #>
 
-#Requires -Module @{ ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.28.0' }
+#Requires -Module @{ ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.28.0' } 
+#Requires -Module @{ ModuleName = 'Microsoft.Graph.Identity.DirectoryManagement'; ModuleVersion = '2.28.0' }
 
 <#
 
