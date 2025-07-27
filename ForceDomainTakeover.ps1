@@ -1112,7 +1112,7 @@ $outputPublicDNSRecordsMX = $global:LogFile.replace($logFileNameFull,$publicDNSR
 $outputMGContext = $global:LogFile.replace($logFileNameFull,$mgContext)
 $outputDomainName = $global:LogFile.replace($logFileNameFull,$domainNameInfo)
 $outputResultsJSON = $global:LogFile.replace($logFileNameFull,$resultsJson)
-$outputViralInfo = $outputResultsJSON = $global:LogFile.replace($logFileNameFull,$viralDomainInfo)
+$outputViralInfo = $global:LogFile.replace($logFileNameFull,$viralDomainInfo)
 
 $global:global:GraphConnection = $FALSE
 
