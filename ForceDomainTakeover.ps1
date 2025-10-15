@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.8
+.VERSION 1.0.10
 
 .GUID 4d12d780-d14c-4a38-9c29-5e707d7d07b7
 
@@ -61,7 +61,7 @@ Param(
     [Parameter(Mandatory=$false)]
     [string]$msGraphClientSecret="",
     [Parameter(Mandatory=$false)]
-    [string]$msGraphUseBeta=$false
+    [string]$msGraphUseBeta=$true
 )
 
 
@@ -1122,6 +1122,8 @@ out-logfile -string ("Output Public DNS Records TXT: "+$outputPublicDNSRecordsTX
 out-logfile -string ("Output Public DNS Records MX: "+$outputPublicDNSRecordsMX)
 out-logfile -string ("Output MGContext: "+$outputMGContext)
 out-logfile -string ("Output DomainName: "+$outputDomainName)
+out-logfile -string ("Output ResultsJSON: "+$outputResultsJson)
+out-logfile -string ("Output ViralInfo: "+$outputViralInfo)
 
 #Establish graph connection.
 
