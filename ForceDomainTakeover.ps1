@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.11
+.VERSION 1.0.12
 
 .GUID 4d12d780-d14c-4a38-9c29-5e707d7d07b7
 
@@ -657,6 +657,18 @@ Function TestDomainName
     }
 
     WriteXMLFile -outputFile $outputFile -data $functionDomain
+
+    out-logfile -string "Testing to see if domain appears as verified."
+
+    if ($functionDomain.IsVerified -eq $TRUE)
+    {
+        out-logfile -string ("The domain that was added or found is already verified: "+$functionDomain.IsVerified)
+        out-logfile -string "Domain already added and verified" -isError:$TRUE  
+    }
+    else 
+    {
+        out-logfile -string ("The domain that was added or found is NOT already verified - proceed: "+$functionDomain.IsVerified)
+    }
 }
 
 #*****************************************************
