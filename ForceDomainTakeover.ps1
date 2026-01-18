@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.12
+.VERSION 1.0.13
 
 .GUID 4d12d780-d14c-4a38-9c29-5e707d7d07b7
 
@@ -1065,7 +1065,7 @@ Function IsDomainViral
 
 $global:global = "Global"
 $global:usGov = "USGov"
-$global:usDOD = "USDoD"
+$global:usDOD = "USGovDoD"
 $global:China = "China"
 $global:msGraphURLGlobal = "https://graph.microsoft.com"
 $global:msGraphURLUSGov = "https://graph.microsoft.us"
