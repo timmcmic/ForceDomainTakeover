@@ -1057,6 +1057,24 @@ Function IsDomainViral
     $functionResults.content | out-file -FilePath $outputFile
 }
 
+#*****************************************************
+Function DisplayDNSEntries
+{
+    [cmdletbinding()]
+
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        $msGraphEnvironmentName
+    )
+
+    out-logfile -string "Enter DisplayDNSEntries"
+    
+
+
+    out-logfile -string "Exit DisplayDNSEntries"
+}
+
 #=====================================================================================
 #Begin main function body.
 #=====================================================================================
@@ -1126,7 +1144,7 @@ $outputDomainName = $global:LogFile.replace($logFileNameFull,$domainNameInfo)
 $outputResultsJSON = $global:LogFile.replace($logFileNameFull,$resultsJson)
 $outputViralInfo = $global:LogFile.replace($logFileNameFull,$viralDomainInfo)
 
-$global:global:GraphConnection = $FALSE
+$global:GraphConnection = $FALSE
 
 out-logfile -string ("Output JSON Results: "+$outputresultsJson)
 out-logfile -string ("Output M365 DNS Records: "+$outputM365DNSRecords)
