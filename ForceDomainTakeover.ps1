@@ -541,7 +541,7 @@ Function ConnectMSGraph
 
         try
         {
-            connect-MGGraph -environment $msGraphEnvironmentName -tenant $msGraphTenantID -clientID $msGraphApplicationID -clientSecretCredential $clientSecretCredential -errorAction STOP
+            connect-MGGraph -environment $msGraphEnvironmentName -tenant $msGraphTenantID -clientSecretCredential $clientSecretCredential -errorAction STOP
 
             out-logfile -string "Graph connection successful."
         }
