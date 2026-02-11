@@ -700,7 +700,7 @@ Function GetM365DNSRecords
 
     try
     {
-        $functionDNSRecords = Get-MgDomainVerificationDnsRecord -DomainID $domainName -errorAction STOP
+        $functionDNSRecords = @(Get-MgDomainVerificationDnsRecord -DomainID $domainName -errorAction STOP)
     }
     catch
     {
@@ -781,20 +781,25 @@ Function TestDNSRecords
 
     out-logfile -string "Testing public DNS records."
 
-    foreach ($entry in $txt)
+    if ($txt.count -gt 0)
     {
-        if ($entry.value -eq $functionM365Txt)
+        foreach ($entry in $txt)
         {
-            out-logfile -string "TXT record found in public dns."
-            $functionTXTPresent = $TRUE
-        }
-        else 
-        {
-            out-logfile -string "TXT record not found in public dns."
+            if ($entry.value -eq $functionM365Txt)
+            {
+                out-logfile -string "TXT record found in public dns."
+                $functionTXTPresent = $TRUE
+            }
+            else 
+            {
+                out-logfile -string "TXT record not found in public dns."
+            }
         }
     }
 
-    foreach ($entry in $mx)
+    if ($mx.count -gt 0)
+    {
+        foreach ($entry in $mx)
     {
         if ($entry.value -eq $functionM365MX)
         {
@@ -805,6 +810,7 @@ Function TestDNSRecords
         {
             out-logfile -string "MX record not found in public dns."
         }
+    }
     }
 
     if (($functionMXPresent -eq $TRUE) -or ($functionTXTPresent -eq $TRUE))
