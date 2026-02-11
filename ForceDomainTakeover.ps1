@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.16
+.VERSION 1.0.17
 
 .GUID 4d12d780-d14c-4a38-9c29-5e707d7d07b7
 
@@ -1051,6 +1051,9 @@ Function IsDomainViral
 
     out-logfile -string ("Testing: "+$functionURL)
 
+    $wshell = New-Object -ComObject wscript.shell
+    $wshell.SendKeys('y')
+    $wshell.sendKeys("{Enter}")
     $functionResults = Invoke-WebRequest $functionURL
 
     if ($functionResults.content.contains("IsViral"))
