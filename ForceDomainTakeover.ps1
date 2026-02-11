@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.14
+.VERSION 1.0.15
 
 .GUID 4d12d780-d14c-4a38-9c29-5e707d7d07b7
 
@@ -31,8 +31,8 @@
 
 #>
 
-#Requires -Module @{ ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.28.0' } 
-#Requires -Module @{ ModuleName = 'Microsoft.Graph.Identity.DirectoryManagement'; ModuleVersion = '2.28.0' }
+#Requires -Module @{ ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.35.1' } 
+#Requires -Module @{ ModuleName = 'Microsoft.Graph.Identity.DirectoryManagement'; ModuleVersion = '2.35.1' }
 
 <#
 
