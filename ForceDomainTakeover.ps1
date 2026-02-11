@@ -1,6 +1,6 @@
 <#PSScriptInfo
 
-.VERSION 1.0.13
+.VERSION 1.0.14
 
 .GUID 4d12d780-d14c-4a38-9c29-5e707d7d07b7
 
@@ -531,9 +531,17 @@ Function ConnectMSGraph
     {
         out-logfile -string "Connect to msgraph using certificate authentication."
 
+        out-logfile -string "Converting provided client secret."
+
+        $securedPasswordPassword = convertTo-SecureString -string $msGraphClientSecret -AsPlainText -Force
+
+        out-logfile -string "Creating client secret credential"
+
+        $clientSecretCredential = new-object -typeName System.Management.Automation.PSCredential -argumentList $msGraphApplicationID,$securedPasswordPassword
+
         try
         {
-            connect-MGGraph -environment $msGraphEnvironmentName -tenant $msGraphTenantID -clientID $msGraphApplicationID -clientSecretCredential $msGraphClientSecret -errorAction STOP
+            connect-MGGraph -environment $msGraphEnvironmentName -tenant $msGraphTenantID -clientID $msGraphApplicationID -clientSecretCredential $clientSecretCredential -errorAction STOP
 
             out-logfile -string "Graph connection successful."
         }
